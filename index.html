@@ -126,6 +126,9 @@ input[type=number],input[type=date],input[type=text],input[type=password],select
 <p class="msg" id="authErr" role="alert"></p>
 <button class="save" type="submit" id="authBtn">Entrar</button>
 </form>
+<button type="button" id="bkLoad" class="tg" style="width:100%;margin-top:10px">Cargar respaldo</button>
+<input type="file" id="bkFile" accept=".json,application/json" hidden>
+<p class="msg" id="bkMsg" style="margin-top:8px"></p>
 <p class="hint" id="authNote"></p>
 <p class="hint ver" id="verAuth" style="text-align:center;margin-top:18px"></p>
 </main>
@@ -137,6 +140,9 @@ input[type=number],input[type=date],input[type=text],input[type=password],select
 <p class="hint" id="freqHint"></p>
 <b class="mt" style="display:block;margin-top:16px">Ver por</b>
 <div class="seg" style="margin-top:10px"><label><input type="radio" name="per" value="week" checked><span class="a" id="tabWeek">Semanas</span></label><label><input type="radio" name="per" value="month"><span class="a">Meses</span></label><label><input type="radio" name="per" value="year"><span class="a">Años</span></label></div>
+<b class="mt" style="display:block;margin-top:16px">Respaldo</b>
+<p class="hint" id="bkInfo"></p>
+<button type="button" id="bkSave" class="save" style="width:100%;margin-top:10px">Guardar respaldo</button>
 <div class="acct"><span id="who"></span><button type="button" id="logout" class="tg sm">Cerrar sesión</button></div>
 <p class="hint ver" id="verMenu"></p>
 </div>
@@ -284,8 +290,8 @@ function saveUsers(u){try{localStorage.setItem(UK,JSON.stringify(u));}catch(e){}
 function hashPw(pw,salt){var s=salt+':'+pw;if(window.crypto&&crypto.subtle&&window.TextEncoder){return crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)).then(function(b){return Array.from(new Uint8Array(b)).map(function(x){return ('0'+x.toString(16)).slice(-2);}).join('');});}var h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return Promise.resolve('f'+h);}
 function setMode(m){mode=m;document.querySelectorAll('input[name=am]').forEach(function(r){r.checked=r.value===m;});$('ap2').parentNode.hidden=m!=='reg';document.querySelectorAll('.eye').forEach(function(b){b.parentNode.querySelector('input').type='password';b.querySelector('.sl').style.display='none';b.setAttribute('aria-label','Mostrar contraseña');});$('authBtn').textContent=m==='reg'?'Crear cuenta':'Entrar';$('authErr').textContent='';}
 function showAuth(){USER=null;KEY=null;$('app').hidden=true;$('auth').hidden=false;var has=Object.keys(users()).length>0,leg=false;try{leg=!!localStorage.getItem(LEG);}catch(e){}setMode(has?'login':'reg');$('authNote').textContent=(!has&&leg)?'Ya hay movimientos guardados en este dispositivo: se asignarán a la primera cuenta que crees.':'Tu cuenta y tus datos se guardan solo en este dispositivo.';$('au').value='';$('ap').value='';$('ap2').value='';}
-function refreshUI(){$('tasa').value=S.tasa||'';['n','g','a'].forEach(function(k){$('p'+k).value=S.pct[k];});applyFreq();P='week';document.querySelector('input[name=per][value=week]').checked=true;$('date').value=iso(new Date());hideToast();render();}
-function enter(name){USER=name;KEY='misGanancias.u.'+name.toLowerCase();try{localStorage.setItem(SK,name);}catch(e){}loadData();$('auth').hidden=true;$('app').hidden=false;$('menu').hidden=true;$('who').textContent='Cuenta: '+name;refreshUI();}
+function refreshUI(){$('tasa').value=S.tasa||'';['n','g','a'].forEach(function(k){$('p'+k).value=S.pct[k];});applyFreq();P='week';document.querySelector('input[name=per][value=week]').checked=true;$('date').value=iso(new Date());hideToast();bkInfo();render();}
+function enter(name){USER=name;KEY='misGanancias.u.'+name.toLowerCase();try{localStorage.setItem(SK,name);}catch(e){}loadData();$('auth').hidden=true;$('app').hidden=false;$('menu').hidden=true;$('who').textContent='Cuenta: '+name;$('bkMsg').textContent='';refreshUI();}
 document.querySelectorAll('input[name=am]').forEach(function(r){r.onchange=function(){setMode(r.value);};});
 $('authForm').onsubmit=function(ev){ev.preventDefault();var name=$('au').value.trim(),pw=$('ap').value,m=$('authErr'),key=name.toLowerCase(),U=users();m.textContent='';
  if(name.length<3||name.length>24){m.textContent='El usuario debe tener entre 3 y 24 caracteres.';return;}
@@ -302,7 +308,22 @@ $('authForm').onsubmit=function(ev){ev.preventDefault();var name=$('au').value.t
 };
 document.querySelectorAll('.eye').forEach(function(b){b.onclick=function(){var i=b.parentNode.querySelector('input'),show=i.type==='password';i.type=show?'text':'password';b.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');b.querySelector('.sl').style.display=show?'':'none';};});
 $('logout').onclick=function(){try{localStorage.removeItem(SK);}catch(e){}$('menuBtn').setAttribute('aria-expanded','false');showAuth();};
-var VER='1.1';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
+var VER='1.2';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
+function bkInfo(){var t='Aún no has guardado un respaldo.';if(S.lastBackup){var d=new Date(S.lastBackup);if(!isNaN(d))t='Último respaldo: '+d.getDate()+' '+MES[d.getMonth()]+' '+d.getFullYear();}$('bkInfo').textContent=t;}
+function bkSave(){if(!USER)return;var r=users()[USER.toLowerCase()];if(!r)return;S.lastBackup=new Date().toISOString();save();var pack={app:'mis-ganancias',formato:1,version:VER,creado:S.lastBackup,usuario:{name:r.name,salt:r.salt,hash:r.hash},datos:S};var blob=new Blob([JSON.stringify(pack)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='respaldo-mis-ganancias-'+iso(new Date())+'.json';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);bkInfo();}
+$('bkSave').onclick=bkSave;
+$('bkLoad').onclick=function(){$('bkMsg').textContent='';$('bkFile').value='';$('bkFile').click();};
+$('bkFile').onchange=function(){var f=this.files&&this.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){var m=$('bkMsg'),p;m.style.color='';
+ try{p=JSON.parse(rd.result);}catch(e){m.textContent='El archivo no es un respaldo válido.';return;}
+ if(!p||p.app!=='mis-ganancias'||!p.usuario||typeof p.usuario.name!=='string'||p.usuario.name.length<3||p.usuario.name.length>24||!p.usuario.salt||!p.usuario.hash||!p.datos||!Array.isArray(p.datos.entries)){m.textContent='El archivo no es un respaldo válido.';return;}
+ var D=p.datos;D.entries=D.entries.filter(function(e){return e&&isFinite(e.usd)&&/^\d{4}-\d{2}-\d{2}$/.test(String(e.date))&&(e.type==='in'||e.type==='out');}).map(function(e){return {id:+e.id||Date.now(),date:e.date,type:e.type,usd:+e.usd,tasa:+e.tasa||0,note:String(e.note||'').slice(0,200),cat:(e.cat==='g'||e.cat==='a'||e.cat==='n')?e.cat:''};});
+ D.tasa=+D.tasa||0;if(!D.pct||!isFinite(D.pct.n)||!isFinite(D.pct.g)||!isFinite(D.pct.a))delete D.pct;if(D.freq!=='bi')D.freq='week';D.lastBackup=typeof D.lastBackup==='string'?D.lastBackup:null;
+ var key=p.usuario.name.toLowerCase(),U=users();
+ if(U[key]&&!confirm('Ya existe la cuenta "'+p.usuario.name+'" en este dispositivo. ¿Reemplazarla con el respaldo?'))return;
+ U[key]={name:p.usuario.name,salt:String(p.usuario.salt),hash:String(p.usuario.hash)};saveUsers(U);
+ try{localStorage.setItem('misGanancias.u.'+key,JSON.stringify(D));}catch(e){m.textContent='No se pudo guardar en este dispositivo.';return;}
+ setMode('login');$('au').value=p.usuario.name;$('ap').value='';m.style.color='var(--in)';m.textContent='Respaldo cargado. Escribe tu contraseña para entrar.';$('ap').focus();};
+ rd.readAsText(f);};
 var su=null;try{su=localStorage.getItem(SK);}catch(e){}
 var U0=users();
 if(su&&U0[su.toLowerCase()])enter(U0[su.toLowerCase()].name);else showAuth();
