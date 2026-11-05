@@ -99,6 +99,7 @@ h2{font-size:1rem;margin:26px 0 8px}
 .tbl td.out{background:color-mix(in srgb,var(--out) 9%,transparent)}
 .tbl th.in{color:var(--in)}.tbl th.out{color:var(--out)}
 .tbl td.mut{color:var(--mute);font-size:.85rem}
+.tbl small.bs{display:block;color:var(--mute);font-size:.72rem;font-weight:400;margin-top:2px;white-space:nowrap}
 .del{border:0;background:none;color:var(--mute);font-size:1.2rem;cursor:pointer;padding:4px 8px}
 form{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px;margin-top:0}
 .seg{display:flex;gap:6px}
@@ -213,6 +214,8 @@ var MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'
 var MESL=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 var fmt=new Intl.NumberFormat('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
 var fmtT=new Intl.NumberFormat('es-VE',{minimumFractionDigits:0,maximumFractionDigits:2,useGrouping:'always'});
+var fmtB=new Intl.NumberFormat('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:'always'});
+function bsOf(e){var v=+e.bs>0?+e.bs:(+e.tasa>0?e.usd*e.tasa:0);return v>0?fmtB.format(v)+' Bs':'';}
 function parseNum(s){s=String(s).trim().replace(/\s/g,'');if(!s)return 0;if(s.indexOf(',')>-1)s=s.replace(/\./g,'').replace(',','.');else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');var n=parseFloat(s);return isFinite(n)?n:0;}
 function money(n){return (n<0?'−':'')+'$'+fmt.format(Math.abs(n));}
 function iso(dt){var m=dt.getMonth()+1,d=dt.getDate();return dt.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(d<10?'0':'')+d;}
@@ -257,7 +260,7 @@ function render(){
   return '<tr><td>'+label(x,p)+'</td><td class="in">'+fmt.format(v.i)+'</td><td class="out">'+fmt.format(v.o)+'</td><td class="'+(nn<0?'out':'in')+'"><b>'+money(nn)+'</b></td></tr>';}).join('')+'</tbody></table>':'<div class="empty">Aún no hay movimientos. Registra tu primer ingreso abajo.</div>';
  var rec=S.entries.slice().sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id-a.id;});
  $('recent').innerHTML=rec.length?'<table class="tbl"><thead><tr><th>Fecha</th><th style="text-align:left">Detalle</th><th>Tasa</th><th>Monto</th><th></th></tr></thead><tbody>'+rec.map(function(e){var dt=parse(e.date);
-  return '<tr><td>'+dt.getDate()+' '+MES[dt.getMonth()]+'</td><td style="text-align:left">'+(e.note?esc(e.note):(e.type==='in'?'Ingreso':(e.cat==='a'?'Ahorro':'Gasto')))+'</td><td class="mut">'+(e.tasa>0?fmtT.format(e.tasa)+' Bs':'—')+'</td><td class="'+(e.type==='in'?'in':'out')+'"><b>'+(e.type==='in'?'+':'−')+'$'+fmt.format(e.usd)+'</b></td><td style="padding:4px"><button class="del" data-id="'+e.id+'" aria-label="Eliminar">×</button></td></tr>';}).join('')+'</tbody></table>':'<div class="empty">Nada por aquí todavía.</div>';
+  return '<tr><td>'+dt.getDate()+' '+MES[dt.getMonth()]+'</td><td style="text-align:left">'+(e.note?esc(e.note):(e.type==='in'?'Ingreso':(e.cat==='a'?'Ahorro':'Gasto')))+'</td><td class="mut">'+(e.tasa>0?fmtT.format(e.tasa)+' Bs':'—')+'</td><td class="'+(e.type==='in'?'in':'out')+'"><b>'+(e.type==='in'?'+':'−')+'$'+fmt.format(e.usd)+'</b>'+(bsOf(e)?'<small class="bs">'+bsOf(e)+'</small>':'')+'</td><td style="padding:4px"><button class="del" data-id="'+e.id+'" aria-label="Eliminar">×</button></td></tr>';}).join('')+'</tbody></table>':'<div class="empty">Nada por aquí todavía.</div>';
 }
 function esc(s){return s.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 document.querySelectorAll('input[name=per]').forEach(function(r){r.onchange=function(){P=r.value;render();};});
@@ -287,7 +290,7 @@ $('form').onsubmit=function(ev){ev.preventDefault();
  if(!(a>0)){msg.textContent='Escribe un monto mayor a cero.';return;}
  var usd=a;
  if($('cur').value==='bs'){if(!(S.tasa>0)){msg.textContent='Para guardar en Bs, indica primero la tasa del día.';$('tasa').focus();return;}usd=a/S.tasa;}
- S.entries.push({id:Date.now(),date:$('date').value,type:document.querySelector('input[name=type]:checked').value,usd:Math.round(usd*100)/100,tasa:S.tasa>0?S.tasa:0,note:$('note').value.trim(),cat:document.querySelector('input[name=type]:checked').value==='out'?$('cat').value:''});
+ S.entries.push({id:Date.now(),date:$('date').value,type:document.querySelector('input[name=type]:checked').value,usd:Math.round(usd*100)/100,bs:($('cur').value==='bs'?a:0),tasa:S.tasa>0?S.tasa:0,note:$('note').value.trim(),cat:document.querySelector('input[name=type]:checked').value==='out'?$('cat').value:''});
  save();$('amt').value='';$('note').value='';render();bkCheck();};
 var undoItem=null,undoTimer=null,tick=null;
 function hideToast(){$('toast').hidden=true;undoItem=null;clearTimeout(undoTimer);clearInterval(tick);}
@@ -317,7 +320,7 @@ $('authForm').onsubmit=function(ev){ev.preventDefault();var name=$('au').value.t
 };
 document.querySelectorAll('.eye').forEach(function(b){b.onclick=function(){var i=b.parentNode.querySelector('input'),show=i.type==='password';i.type=show?'text':'password';b.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');b.querySelector('.sl').style.display=show?'':'none';};});
 $('logout').onclick=function(){try{localStorage.removeItem(SK);}catch(e){}$('menuBtn').setAttribute('aria-expanded','false');showAuth();};
-var VER='1.3';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
+var VER='1.4';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
 function bkCheck(){var b=$('bkBanner');if(!USER){b.hidden=true;return;}var now=Date.now(),n=Math.max(0,S.entries.length-(S.bkN||0)),msg=null;
  if(S.bkSnooze&&new Date(S.bkSnooze).getTime()>now){b.hidden=true;return;}
  if(!S.lastBackup){if(S.entries.length>=5)msg='Ya tienes '+S.entries.length+' movimientos y aún no has guardado un respaldo. ¿Quieres guardar uno ahora?';}
@@ -333,7 +336,7 @@ $('bkLoad').onclick=function(){$('bkMsg').textContent='';$('bkFile').value='';$(
 $('bkFile').onchange=function(){var f=this.files&&this.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){var m=$('bkMsg'),p;m.style.color='';
  try{p=JSON.parse(rd.result);}catch(e){m.textContent='El archivo no es un respaldo válido.';return;}
  if(!p||p.app!=='mis-ganancias'||!p.usuario||typeof p.usuario.name!=='string'||p.usuario.name.length<3||p.usuario.name.length>24||!p.usuario.salt||!p.usuario.hash||!p.datos||!Array.isArray(p.datos.entries)){m.textContent='El archivo no es un respaldo válido.';return;}
- var D=p.datos;D.entries=D.entries.filter(function(e){return e&&isFinite(e.usd)&&/^\d{4}-\d{2}-\d{2}$/.test(String(e.date))&&(e.type==='in'||e.type==='out');}).map(function(e){return {id:+e.id||Date.now(),date:e.date,type:e.type,usd:+e.usd,tasa:+e.tasa||0,note:String(e.note||'').slice(0,200),cat:(e.cat==='g'||e.cat==='a'||e.cat==='n')?e.cat:''};});
+ var D=p.datos;D.entries=D.entries.filter(function(e){return e&&isFinite(e.usd)&&/^\d{4}-\d{2}-\d{2}$/.test(String(e.date))&&(e.type==='in'||e.type==='out');}).map(function(e){return {id:+e.id||Date.now(),date:e.date,type:e.type,usd:+e.usd,tasa:+e.tasa||0,bs:+e.bs||0,note:String(e.note||'').slice(0,200),cat:(e.cat==='g'||e.cat==='a'||e.cat==='n')?e.cat:''};});
  D.tasa=+D.tasa||0;if(!D.pct||!isFinite(D.pct.n)||!isFinite(D.pct.g)||!isFinite(D.pct.a))delete D.pct;if(D.freq!=='bi')D.freq='week';D.lastBackup=typeof D.lastBackup==='string'?D.lastBackup:null;
  var key=p.usuario.name.toLowerCase(),U=users();
  if(U[key]&&!confirm('Ya existe la cuenta "'+p.usuario.name+'" en este dispositivo. ¿Reemplazarla con el respaldo?'))return;
