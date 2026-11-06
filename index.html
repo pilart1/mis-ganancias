@@ -240,11 +240,13 @@ function T(){return S.freq==='bi'?{cur:'Esta quincena',per:'Quincena',pl:'Quince
 function renderBudget(){
  var wk=key(iso(new Date()),'week'),inc=0,sp={n:0,g:0,a:0},P=S.pct;
  S.entries.forEach(function(e){if(key(e.date,'week')!==wk)return;if(e.type==='in'){inc+=e.usd;return;}var c=e.cat==='g'?'g':(e.cat==='a'?'a':'n');sp[c]+=e.usd;});
+ var per={};S.entries.forEach(function(e){var k2=key(e.date,'week');if(k2>=wk)return;var o=per[k2]=per[k2]||{i:0,n:0,g:0,a:0};if(e.type==='in')o.i+=e.usd;else if(e.cat==='g')o.g+=e.usd;else if(e.cat==='a')o.a+=e.usd;else o.n+=e.usd;});
+ var carry={n:0,g:0,a:0};Object.keys(per).sort().forEach(function(k2){var o=per[k2];carry.n=Math.max(0,o.i*P.n/100+carry.n-o.n);carry.g=Math.max(0,o.i*P.g/100+carry.g-o.g);carry.a=Math.max(0,o.i*P.a/100+carry.a-o.a);});
  var defs=[['n','Necesidades','comida, servicios, transporte'],['g','Gustos','disfrute']];
- var asA=inc*P.a/100,leftA=asA-sp.a,pcA=asA>0?Math.min(100,sp.a/asA*100):(sp.a>0?100:0);
- var h=defs.map(function(d){var k=d[0],as=inc*P[k]/100,left=as-sp[k],pc=as>0?Math.min(100,sp[k]/as*100):(sp[k]>0?100:0);
-  return '<div class="card"><div class="bh"><b>'+d[1]+' · <em class="pc '+(k==='n'?'blu':'lil')+'">'+P[k]+'%</em></b><span>'+d[2]+'</span></div><div class="bn"><div><span>Asignado</span>'+money(as)+'</div><div><span>Gastado</span>'+money(sp[k])+'</div><div><span>Disponible</span><b class="'+(left<0?'out':(k==='n'?'blu':'lil'))+'">'+money(left)+'</b></div></div><div class="pb"><i class="'+(left<0?'o':(k==='n'?'b':'l'))+'" style="width:'+pc+'%"></i></div></div>';}).join('');
- h+='<div class="card"><div class="bh"><b>Ahorro · <em class="pc yel">'+P.a+'%</em></b><span>apártalo al cobrar</span></div><div class="bn"><div><span>Por apartar</span>'+money(asA)+'</div><div><span>Apartado</span>'+money(sp.a)+'</div><div><span>Falta</span><b class="yel">'+money(Math.max(leftA,0))+'</b></div></div><div class="pb"><i class="y" style="width:'+pcA+'%"></i></div></div>';
+ var asA=inc*P.a/100,cyA=carry.a,totA=asA+cyA,leftA=totA-sp.a,pcA=totA>0?Math.min(100,sp.a/totA*100):(sp.a>0?100:0);
+ var h=defs.map(function(d){var k=d[0],as=inc*P[k]/100,cy=carry[k],tot=as+cy,left=tot-sp[k],pc=tot>0?Math.min(100,sp[k]/tot*100):(sp[k]>0?100:0);
+  return '<div class="card"><div class="bh"><b>'+d[1]+' · <em class="pc '+(k==='n'?'blu':'lil')+'">'+P[k]+'%</em></b><span>'+d[2]+'</span></div><div class="bn"><div><span>Asignado</span>'+money(as)+'</div>'+(cy>0?'<div><span>Sobrante</span>'+money(cy)+'</div>':'')+'<div><span>Gastado</span>'+money(sp[k])+'</div><div><span>Disponible</span><b class="'+(left<0?'out':(k==='n'?'blu':'lil'))+'">'+money(left)+'</b></div></div><div class="pb"><i class="'+(left<0?'o':(k==='n'?'b':'l'))+'" style="width:'+pc+'%"></i></div></div>';}).join('');
+ h+='<div class="card"><div class="bh"><b>Ahorro · <em class="pc yel">'+P.a+'%</em></b><span>apártalo al cobrar</span></div><div class="bn"><div><span>Por apartar</span>'+money(asA)+'</div>'+(cyA>0?'<div><span>Pendiente</span>'+money(cyA)+'</div>':'')+'<div><span>Apartado</span>'+money(sp.a)+'</div><div><span>Falta</span><b class="yel">'+money(Math.max(leftA,0))+'</b></div></div><div class="pb"><i class="y" style="width:'+pcA+'%"></i></div></div>';
  $('budget').innerHTML=h;
  $('bwk').textContent=T().per+' '+label(wk,'week')+' · base: '+money(inc);$('tabWeek').textContent=T().pl;$('repTitle').textContent=T().rep;
  var s=P.n+P.g+P.a;$('psum').textContent=s===100?'':'Los porcentajes suman '+s+'%, deberían sumar 100%.';
@@ -320,7 +322,7 @@ $('authForm').onsubmit=function(ev){ev.preventDefault();var name=$('au').value.t
 };
 document.querySelectorAll('.eye').forEach(function(b){b.onclick=function(){var i=b.parentNode.querySelector('input'),show=i.type==='password';i.type=show?'text':'password';b.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');b.querySelector('.sl').style.display=show?'':'none';};});
 $('logout').onclick=function(){try{localStorage.removeItem(SK);}catch(e){}$('menuBtn').setAttribute('aria-expanded','false');showAuth();};
-var VER='1.4';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
+var VER='1.6';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
 function bkCheck(){var b=$('bkBanner');if(!USER){b.hidden=true;return;}var now=Date.now(),n=Math.max(0,S.entries.length-(S.bkN||0)),msg=null;
  if(S.bkSnooze&&new Date(S.bkSnooze).getTime()>now){b.hidden=true;return;}
  if(!S.lastBackup){if(S.entries.length>=5)msg='Ya tienes '+S.entries.length+' movimientos y aún no has guardado un respaldo. ¿Quieres guardar uno ahora?';}
