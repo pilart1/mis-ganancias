@@ -112,8 +112,9 @@ h2{font-size:1rem;margin:26px 0 8px}
 .tbl td.sv{color:#d19a00;background:color-mix(in srgb,#f5b82e 12%,transparent)}.tbl th.sv{color:#d19a00}
 #periods .tbl th,#periods .tbl td{padding-left:8px;padding-right:8px}#periods .tbl td{font-size:.9rem}
 .tbl small.bs{display:block;color:var(--mute);font-size:.72rem;font-weight:400;margin-top:2px;white-space:nowrap}
-.tbl td.sd{font-weight:600;white-space:nowrap}
-#recent .tbl th,#recent .tbl td{padding-left:8px;padding-right:8px}#recent .tbl td{font-size:.9rem}
+.tbl small.sdo{color:#b07800;font-weight:600}.tbl small.sdo.neg{color:var(--out)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tbl small.sdo:not(.neg){color:#f5b82e}}
+:root[data-theme="dark"] .tbl small.sdo:not(.neg){color:#f5b82e}
 .del{border:0;background:none;color:var(--mute);font-size:1.2rem;cursor:pointer;padding:4px 8px}
 form{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px;margin-top:0}
 .seg{display:flex;gap:6px}
@@ -277,8 +278,8 @@ function render(){
  $('periods').innerHTML=all.length?'<table class="tbl"><thead><tr><th>Periodo</th><th class="in">Ganancias</th><th class="out">Gastos</th><th class="sv">Ahorro</th><th>Neto</th></tr></thead><tbody>'+all.map(function(x){var v=t[x],nn=v.i-v.o-v.s;
   return '<tr><td>'+label(x,p)+'</td><td class="in">'+fmt.format(v.i)+'</td><td class="out">'+fmt.format(v.o)+'</td><td class="sv">'+fmt.format(v.s)+'</td><td class="'+(nn<0?'out':'in')+'"><b>'+money(nn)+'</b></td></tr>';}).join('')+'</tbody></table>':'<div class="empty">Aún no hay movimientos. Registra tu primer ingreso abajo.</div>';
  var run=0,rec=S.entries.slice().sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:a.id-b.id;}).map(function(e){run=Math.round((run+(e.type==='in'?e.usd:-e.usd))*100)/100;return {e:e,s:run};}).reverse();
- $('recent').innerHTML=rec.length?'<table class="tbl"><thead><tr><th>Fecha</th><th style="text-align:left">Detalle</th><th>Monto</th><th>Saldo</th><th></th></tr></thead><tbody>'+rec.map(function(r){var e=r.e,dt=parse(e.date);
-  return '<tr><td>'+dt.getDate()+' '+MES[dt.getMonth()]+'</td><td style="text-align:left">'+(e.note?esc(e.note):(e.type==='in'?'Ingreso':(e.cat==='a'?'Ahorro':'Gasto')))+'</td><td class="'+(e.type==='in'?'in':'out')+'"><b>'+(e.type==='in'?'+':'−')+'$'+fmt.format(e.usd)+'</b>'+(bsOf(e)?'<small class="bs">'+bsOf(e)+'</small>':'')+(e.tasa>0?'<small class="bs">tasa '+fmtT.format(e.tasa)+'</small>':'')+'</td><td class="sd'+(r.s<0?' out':'')+'">'+money(r.s)+'</td><td style="padding:4px"><button class="del" data-id="'+e.id+'" aria-label="Eliminar">×</button></td></tr>';}).join('')+'</tbody></table>':'<div class="empty">Nada por aquí todavía.</div>';
+ $('recent').innerHTML=rec.length?'<table class="tbl"><thead><tr><th>Fecha</th><th style="text-align:left">Detalle</th><th>Tasa</th><th>Monto</th><th></th></tr></thead><tbody>'+rec.map(function(r){var e=r.e,dt=parse(e.date);
+  return '<tr><td>'+dt.getDate()+' '+MES[dt.getMonth()]+'</td><td style="text-align:left">'+(e.note?esc(e.note):(e.type==='in'?'Ingreso':(e.cat==='a'?'Ahorro':'Gasto')))+'</td><td class="mut">'+(e.tasa>0?fmtT.format(e.tasa)+' Bs':'—')+'</td><td class="'+(e.type==='in'?'in':'out')+'"><b>'+(e.type==='in'?'+':'−')+'$'+fmt.format(e.usd)+'</b>'+(bsOf(e)?'<small class="bs">'+bsOf(e)+'</small>':'')+'<small class="bs sdo'+(r.s<0?' neg':'')+'">Saldo '+money(r.s)+'</small></td><td style="padding:4px"><button class="del" data-id="'+e.id+'" aria-label="Eliminar">×</button></td></tr>';}).join('')+'</tbody></table>':'<div class="empty">Nada por aquí todavía.</div>';
 }
 function esc(s){return s.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 document.querySelectorAll('input[name=per]').forEach(function(r){r.onchange=function(){P=r.value;render();menuOpen(false);};});
@@ -342,7 +343,7 @@ $('authForm').onsubmit=function(ev){ev.preventDefault();var name=$('au').value.t
 };
 document.querySelectorAll('.eye').forEach(function(b){b.onclick=function(){var i=b.parentNode.querySelector('input'),show=i.type==='password';i.type=show?'text':'password';b.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');b.querySelector('.sl').style.display=show?'':'none';};});
 $('logout').onclick=function(){try{localStorage.removeItem(SK);}catch(e){}menuReset();showAuth();};
-var VER='2.1';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
+var VER='2.2';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
 function bkCheck(){var b=$('bkBanner');if(!USER){b.hidden=true;return;}var now=Date.now(),n=Math.max(0,S.entries.length-(S.bkN||0)),msg=null;
  if(S.bkSnooze&&new Date(S.bkSnooze).getTime()>now){b.hidden=true;return;}
  if(!S.lastBackup){if(S.entries.length>=5)msg='Ya tienes '+S.entries.length+' movimientos y aún no has guardado un respaldo. ¿Quieres guardar uno ahora?';}
