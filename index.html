@@ -16,12 +16,11 @@ main{max-width:560px;margin:0 auto;padding:20px 16px 48px}
 h1{font-size:1.1rem;font-weight:600;margin:0;color:var(--mute)}
 .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 .lft{display:flex;align-items:center;gap:10px}
-#menu{position:fixed;top:0;left:0;bottom:0;width:min(86vw,340px);margin:0;border-radius:0 18px 18px 0;overflow-y:auto;z-index:40;padding:calc(18px + env(safe-area-inset-top,0px)) 16px calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-102%);transition:transform .22s ease;box-shadow:6px 0 28px rgba(0,0,0,.28)}
+#menu{position:fixed;top:var(--mt,0px);left:0;width:min(86vw,340px);max-height:calc(100% - var(--mt,0px));margin:0;border-radius:0 18px 18px 0;overflow-y:auto;z-index:40;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-102%);transition:transform .22s ease;box-shadow:6px 8px 28px rgba(0,0,0,.28)}
 #menu.open{transform:none}
-.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:39;opacity:0;transition:opacity .22s ease}
+.scrim{position:fixed;left:0;right:0;bottom:0;top:var(--mt,0px);background:rgba(0,0,0,.45);z-index:39;opacity:0;transition:opacity .22s ease}
 .scrim.open{opacity:1}
-.mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-#menu .mh b{font-size:1.2rem}.card .mt{font-size:1rem}
+#menuBtn[aria-expanded="true"]{background:var(--ink);color:var(--bg)}.card .mt{font-size:1rem}
 #menu .seg span{font-size:.92rem}
 .hint{color:var(--mute);font-size:.82rem;margin:8px 0 0}
 .acct{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
@@ -153,7 +152,6 @@ input[type=number],input[type=date],input[type=text],input[type=password],select
 <div class="top"><div class="lft"><button id="menuBtn" class="tg" type="button" aria-label="Menú" aria-expanded="false" aria-controls="menu">☰</button><h1>Mis ganancias</h1></div><button id="theme" class="tg" type="button" aria-label="Cambiar entre modo claro y oscuro"></button></div>
 <div class="scrim" id="scrim" hidden></div>
 <div class="card" id="menu" hidden role="dialog" aria-label="Menú">
-<div class="mh"><b>Menú</b><button type="button" id="menuClose" class="tg sm" aria-label="Cerrar menú">✕</button></div>
 <b class="mt">Frecuencia de cobro</b>
 <div class="seg" style="margin-top:10px"><label><input type="radio" name="freq" value="week"><span class="a">Semanal</span></label><label><input type="radio" name="freq" value="bi"><span class="a">Quincenal</span></label></div>
 <p class="hint" id="freqHint"></p>
@@ -296,9 +294,8 @@ $('tasa').oninput=function(){S.tasa=parseNum(this.value);save();};
 $('regTg').onclick=function(){var h=$('form').hidden=!$('form').hidden;this.textContent=h?'▼':'▲';this.setAttribute('aria-label',h?'Abrir registro':'Minimizar registro');this.setAttribute('aria-expanded',String(!h));};
 $('budTg').onclick=function(){var h=$('budBody').hidden=!$('budBody').hidden;this.textContent=h?'▼':'▲';this.setAttribute('aria-label',h?'Abrir reparto semanal':'Minimizar reparto semanal');this.setAttribute('aria-expanded',String(!h));};
 function menuReset(){var m=$('menu'),s=$('scrim');m.hidden=true;s.hidden=true;m.classList.remove('open');s.classList.remove('open');document.body.style.overflow='';$('menuBtn').setAttribute('aria-expanded','false');}
-function menuOpen(o){var m=$('menu'),s=$('scrim');if(o){m.hidden=false;s.hidden=false;void m.offsetWidth;m.classList.add('open');s.classList.add('open');document.body.style.overflow='hidden';$('menuBtn').setAttribute('aria-expanded','true');$('menuClose').focus();}else{m.classList.remove('open');s.classList.remove('open');document.body.style.overflow='';$('menuBtn').setAttribute('aria-expanded','false');setTimeout(function(){if(!m.classList.contains('open')){m.hidden=true;s.hidden=true;}},230);}}
+function menuOpen(o){var m=$('menu'),s=$('scrim');if(o){var bar=$('menuBtn').closest('.top');document.documentElement.style.setProperty('--mt',(bar?Math.max(0,Math.round(bar.getBoundingClientRect().bottom)+6):0)+'px');m.hidden=false;s.hidden=false;void m.offsetWidth;m.classList.add('open');s.classList.add('open');document.body.style.overflow='hidden';$('menuBtn').setAttribute('aria-expanded','true');}else{m.classList.remove('open');s.classList.remove('open');document.body.style.overflow='';$('menuBtn').setAttribute('aria-expanded','false');setTimeout(function(){if(!m.classList.contains('open')){m.hidden=true;s.hidden=true;}},230);}}
 $('menuBtn').onclick=function(){menuOpen($('menu').hidden);};
-$('menuClose').onclick=function(){menuOpen(false);};
 $('scrim').onclick=function(){menuOpen(false);};
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('menu').hidden)menuOpen(false);});
 function applyFreq(){document.querySelectorAll('input[name=freq]').forEach(function(r){r.checked=r.value===S.freq;});$('freqHint').textContent=S.freq==='bi'?'Dos cobros al mes: del 1 al 15 y del 16 al fin de mes.':'Un cobro por semana: de viernes a jueves.';}
@@ -341,7 +338,7 @@ $('authForm').onsubmit=function(ev){ev.preventDefault();var name=$('au').value.t
 };
 document.querySelectorAll('.eye').forEach(function(b){b.onclick=function(){var i=b.parentNode.querySelector('input'),show=i.type==='password';i.type=show?'text':'password';b.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');b.querySelector('.sl').style.display=show?'':'none';};});
 $('logout').onclick=function(){try{localStorage.removeItem(SK);}catch(e){}menuReset();showAuth();};
-var VER='1.8';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
+var VER='1.9';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
 function bkCheck(){var b=$('bkBanner');if(!USER){b.hidden=true;return;}var now=Date.now(),n=Math.max(0,S.entries.length-(S.bkN||0)),msg=null;
  if(S.bkSnooze&&new Date(S.bkSnooze).getTime()>now){b.hidden=true;return;}
  if(!S.lastBackup){if(S.entries.length>=5)msg='Ya tienes '+S.entries.length+' movimientos y aún no has guardado un respaldo. ¿Quieres guardar uno ahora?';}
