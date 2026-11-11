@@ -263,9 +263,9 @@ function renderBudget(){
  var defs=[['n','Necesidades','comida, servicios, transporte'],['g','Gustos','disfrute']];
  var h=defs.map(function(d){var k=d[0],as=inc*P[k]/100,cy=carry[k],tot=as+cy,left=k==='n'?R.leftN:R.leftG,unc=k==='n'?R.uncN:R.uncG,over=k==='n'?R.overN:R.overG,used=sp[k]+(k==='g'?R.cNG:0),pc=tot>0?Math.min(100,used/tot*100):(used>0?100:0),nh='';
   if(k==='g'&&R.cNG>0)nh+='<div class="cn">Cubre '+money(R.cNG)+' de Necesidades</div>';
-  if(over>0){var cA=k==='n'?R.cAN:R.cAG,cG=k==='n'?R.cNG:0,pt=[];if(cG>0)pt.push('Gustos '+money(cG));if(cA>0)pt.push('Ahorro '+money(cA));nh+='<div class="cn warn">Te pasaste '+money(over)+(pt.length?' · cubierto con '+pt.join(' y '):'')+'</div>';}
+  if(over>0){var cA=k==='n'?R.cAN:R.cAG,cG=k==='n'?R.cNG:0,pt=[];if(cG>0)pt.push('Gustos '+money(cG));if(cA>0)pt.push('Ahorro '+money(cA));if(pt.length)nh+='<div class="cn warn">Cubierto con '+pt.join(' y ')+'</div>';}
   if(unc>0)nh+='<div class="cn hard">Sin cubrir: '+money(unc)+'</div>';
-  return '<div class="card"><div class="bh"><b>'+d[1]+' · <em class="pc '+(k==='n'?'blu':'lil')+'">'+P[k]+'%</em></b><span>'+d[2]+'</span></div><div class="bn"><div><span>Asignado</span>'+money(as)+'</div>'+(cy>0?'<div><span>Sobrante</span>'+money(cy)+'</div>':'')+'<div><span>Gastado</span>'+money(sp[k])+'</div><div><span>Disponible</span><b class="'+((left<0||over>0)?'out':(k==='n'?'blu':'lil'))+'">'+money(Math.max(0,left))+'</b></div></div><div class="pb"><i class="'+((left<0||over>0)?'o':(k==='n'?'b':'l'))+'" style="width:'+pc+'%"></i></div>'+nh+'</div>';}).join('');
+  return '<div class="card"><div class="bh"><b>'+d[1]+' · <em class="pc '+(k==='n'?'blu':'lil')+'">'+P[k]+'%</em></b><span>'+d[2]+'</span></div><div class="bn"><div><span>Asignado</span>'+money(as)+'</div>'+(cy>0?'<div><span>Sobrante</span>'+money(cy)+'</div>':'')+'<div><span>Gastado</span>'+money(sp[k])+'</div><div><span>Disponible</span><b class="'+((left<0||over>0)?'out':(k==='n'?'blu':'lil'))+'">'+money(over>0?-over:left)+'</b></div></div><div class="pb"><i class="'+((left<0||over>0)?'o':(k==='n'?'b':'l'))+'" style="width:'+pc+'%"></i></div>'+nh+'</div>';}).join('');
  var cAt=R.cAN+R.cAG,effA=totA-cAt,pcA=effA>0?Math.min(100,sp.a/effA*100):((cAt>0||sp.a>0)?100:0);
  h+='<div class="card"><div class="bh"><b>Ahorro · <em class="pc yel">'+P.a+'%</em></b><span>apártalo al cobrar</span></div><div class="bn"><div><span>Por apartar</span>'+money(asA)+'</div>'+(cyA>0?'<div><span>Pendiente</span>'+money(cyA)+'</div>':'')+'<div><span>Apartado</span>'+money(sp.a)+'</div><div><span>Falta</span><b class="yel">'+money(R.leftA)+'</b></div></div><div class="pb"><i class="y" style="width:'+pcA+'%"></i></div>'+(cAt>0?'<div class="cn warn">Cubre '+money(cAt)+' de gastos que se pasaron del presupuesto</div>':'')+'</div>';
  $('budget').innerHTML=h;
@@ -347,7 +347,7 @@ $('authForm').onsubmit=function(ev){ev.preventDefault();var name=$('au').value.t
 };
 document.querySelectorAll('.eye').forEach(function(b){b.onclick=function(){var i=b.parentNode.querySelector('input'),show=i.type==='password';i.type=show?'text':'password';b.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');b.querySelector('.sl').style.display=show?'':'none';};});
 $('logout').onclick=function(){try{localStorage.removeItem(SK);}catch(e){}menuReset();showAuth();};
-var VER='2.6';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
+var VER='2.7';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
 function bkCheck(){var b=$('bkBanner');if(!USER){b.hidden=true;return;}var now=Date.now(),n=Math.max(0,S.entries.length-(S.bkN||0)),msg=null;
  if(S.bkSnooze&&new Date(S.bkSnooze).getTime()>now){b.hidden=true;return;}
  if(!S.lastBackup){if(S.entries.length>=5)msg='Ya tienes '+S.entries.length+' movimientos y aún no has guardado un respaldo. ¿Quieres guardar uno ahora?';}
