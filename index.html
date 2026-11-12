@@ -31,6 +31,12 @@ h1{font-size:1.1rem;font-weight:600;margin:0;color:var(--mute)}
 .wel span{flex-basis:100%;color:var(--mute);font-size:.85rem}
 .wel b{flex:1;font-size:1.25rem}
 .bkb{margin-bottom:14px;border-left:4px solid var(--accent)}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;max-height:92%;overflow-y:auto;border-radius:20px 20px 0 0;z-index:60;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));transform:translateY(105%);transition:transform .22s ease;box-shadow:0 -8px 32px rgba(0,0,0,.3)}
+.sheet.open{transform:none}
+#edScrim{z-index:55}
+#edForm{background:none;border:0;padding:0;margin:0}
+#edMsg:empty{display:none}
+.tbl tr.mv{cursor:pointer}.tbl tr.mv:active td{opacity:.8}
 .hint.ver{color:#a86f00;font-weight:600}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .hint.ver{color:#f5b82e}}
 :root[data-theme="dark"] .hint.ver{color:#f5b82e}
@@ -215,6 +221,19 @@ input[type=number],input[type=date],input[type=text],input[type=password],select
 
 
 </main>
+<div class="scrim" id="edScrim" hidden></div>
+<div class="card sheet" id="edit" hidden role="dialog" aria-label="Editar movimiento">
+<b class="mt" style="display:block;margin-bottom:12px">Editar movimiento</b>
+<form id="edForm">
+<div class="seg"><label><input type="radio" name="edtype" value="in"><span class="a">Ingreso</span></label><label><input type="radio" name="edtype" value="out"><span class="b">Gasto</span></label></div>
+<div class="f"><input type="text" id="edAmt" inputmode="decimal" placeholder="Monto" aria-label="Monto"><select id="edCur" aria-label="Moneda"><option value="usd">USD</option><option value="bs">Bs</option></select></div>
+<input type="text" id="edTasa" inputmode="decimal" placeholder="Tasa (Bs por USD)" aria-label="Tasa en bolívares por dólar">
+<div class="f2"><input type="date" id="edDate" aria-label="Fecha"><input type="text" id="edNote" placeholder="Nota (opcional)" aria-label="Nota"></div>
+<div id="edCatRow" hidden><select id="edCat" aria-label="Categoría del gasto"><option value="n">Necesidad</option><option value="g">Gusto</option><option value="a">Ahorro</option></select></div>
+<p class="msg" id="edMsg" role="alert"></p>
+<div class="f2"><button type="submit" class="save">Guardar cambios</button><button type="button" id="edCancel" class="tg">Cancelar</button></div>
+</form>
+</div>
 <div class="toast" id="toast" role="status" hidden><span class="ring"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="ring-bg" cx="18" cy="18" r="15"/><circle class="ring-fg" id="ringFg" cx="18" cy="18" r="15"/></svg><b id="ringNum">8</b></span><span id="toastMsg"></span><button type="button" id="undo">Deshacer</button></div>
 
 <script>
@@ -282,8 +301,8 @@ function render(){
  $('periods').innerHTML=all.length?'<table class="tbl"><thead><tr><th>Periodo</th><th class="in">Ganancias</th><th class="out">Gastos</th><th class="sv">Ahorro</th><th>Neto</th></tr></thead><tbody>'+all.map(function(x){var v=t[x],nn=v.i-v.o-v.s;
   return '<tr><td>'+label(x,p)+'</td><td class="in">'+fmt.format(v.i)+'</td><td class="out">'+fmt.format(v.o)+'</td><td class="sv">'+fmt.format(v.s)+'</td><td class="'+(nn<0?'out':'in')+'"><b>'+money(nn)+'</b></td></tr>';}).join('')+'</tbody></table>':'<div class="empty">Aún no hay movimientos. Registra tu primer ingreso abajo.</div>';
  var rec=S.entries.slice().sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id-a.id;});
- $('recent').innerHTML=rec.length?'<table class="tbl"><thead><tr><th>Fecha</th><th style="text-align:left">Detalle</th><th>Tasa</th><th>Monto</th><th></th></tr></thead><tbody>'+rec.map(function(e){var dt=parse(e.date);
-  return '<tr><td>'+dt.getDate()+' '+MES[dt.getMonth()]+'</td><td style="text-align:left">'+(e.note?esc(e.note):(e.type==='in'?'Ingreso':(e.cat==='a'?'Ahorro':'Gasto')))+'</td><td class="mut">'+(e.tasa>0?fmtT.format(e.tasa)+' Bs':'—')+'</td><td class="'+(e.type==='in'?'in':'out')+'"><b>'+(e.type==='in'?'+':'−')+'$'+fmt.format(e.usd)+'</b>'+(bsOf(e)?'<small class="bs">'+bsOf(e)+'</small>':'')+'</td><td style="padding:4px"><button class="del" data-id="'+e.id+'" aria-label="Eliminar">×</button></td></tr>';}).join('')+'</tbody></table>':'<div class="empty">Nada por aquí todavía.</div>';
+ $('recent').innerHTML=rec.length?'<p class="hint" style="margin:0 0 8px">Toca un movimiento para editarlo.</p><table class="tbl"><thead><tr><th>Fecha</th><th style="text-align:left">Detalle</th><th>Tasa</th><th>Monto</th><th></th></tr></thead><tbody>'+rec.map(function(e){var dt=parse(e.date);
+  return '<tr class="mv" data-ix="'+S.entries.indexOf(e)+'"><td>'+dt.getDate()+' '+MES[dt.getMonth()]+'</td><td style="text-align:left">'+(e.note?esc(e.note):(e.type==='in'?'Ingreso':(e.cat==='a'?'Ahorro':'Gasto')))+'</td><td class="mut">'+(e.tasa>0?fmtT.format(e.tasa)+' Bs':'—')+'</td><td class="'+(e.type==='in'?'in':'out')+'"><b>'+(e.type==='in'?'+':'−')+'$'+fmt.format(e.usd)+'</b>'+(bsOf(e)?'<small class="bs">'+bsOf(e)+'</small>':'')+'</td><td style="padding:4px"><button class="del" data-id="'+e.id+'" aria-label="Eliminar">×</button></td></tr>';}).join('')+'</tbody></table>':'<div class="empty">Nada por aquí todavía.</div>';
 }
 function esc(s){return s.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 document.querySelectorAll('input[name=per]').forEach(function(r){r.onchange=function(){P=r.value;render();menuOpen(false);};});
@@ -321,7 +340,7 @@ $('form').onsubmit=function(ev){ev.preventDefault();
  save();$('amt').value='';$('note').value='';render();bkCheck();};
 var undoItem=null,undoTimer=null,tick=null;
 function hideToast(){$('toast').hidden=true;undoItem=null;clearTimeout(undoTimer);clearInterval(tick);}
-$('recent').onclick=function(ev){var b=ev.target.closest&&ev.target.closest('[data-id]');var id=b&&b.dataset.id;if(!id)return;var e=S.entries.filter(function(x){return String(x.id)===id;})[0];if(!e)return;S.entries=S.entries.filter(function(x){return x!==e;});save();render();undoItem=e;$('toastMsg').textContent='Eliminado: '+(e.note||(e.type==='in'?'Ingreso':(e.cat==='a'?'Ahorro':'Gasto')))+', '+(e.type==='in'?'+':'−')+'$'+fmt.format(e.usd);$('toast').hidden=false;clearTimeout(undoTimer);clearInterval(tick);var t0=Date.now();function step(){var left=Math.max(0,8000-(Date.now()-t0));$('ringNum').textContent=Math.ceil(left/1000);$('ringFg').style.strokeDashoffset=94.25*(1-left/8000);}step();tick=setInterval(step,100);undoTimer=setTimeout(hideToast,8000);};
+$('recent').onclick=function(ev){var b=ev.target.closest&&ev.target.closest('[data-id]');var id=b&&b.dataset.id;if(!id){var tr=ev.target.closest&&ev.target.closest('tr[data-ix]');if(tr)edOpen(+tr.dataset.ix);return;}var e=S.entries.filter(function(x){return String(x.id)===id;})[0];if(!e)return;S.entries=S.entries.filter(function(x){return x!==e;});save();render();undoItem=e;$('toastMsg').textContent='Eliminado: '+(e.note||(e.type==='in'?'Ingreso':(e.cat==='a'?'Ahorro':'Gasto')))+', '+(e.type==='in'?'+':'−')+'$'+fmt.format(e.usd);$('toast').hidden=false;clearTimeout(undoTimer);clearInterval(tick);var t0=Date.now();function step(){var left=Math.max(0,8000-(Date.now()-t0));$('ringNum').textContent=Math.ceil(left/1000);$('ringFg').style.strokeDashoffset=94.25*(1-left/8000);}step();tick=setInterval(step,100);undoTimer=setTimeout(hideToast,8000);};
 $('undo').onclick=function(){if(undoItem){S.entries.push(undoItem);save();render();}hideToast();};
 var UK='misGanancias.users',SK='misGanancias.session',LK='misGanancias.last',remembered=null,mode='login';
 function users(){try{return JSON.parse(localStorage.getItem(UK))||{};}catch(e){return {};}}
@@ -347,7 +366,7 @@ $('authForm').onsubmit=function(ev){ev.preventDefault();var name=$('au').value.t
 };
 document.querySelectorAll('.eye').forEach(function(b){b.onclick=function(){var i=b.parentNode.querySelector('input'),show=i.type==='password';i.type=show?'text':'password';b.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');b.querySelector('.sl').style.display=show?'':'none';};});
 $('logout').onclick=function(){try{localStorage.removeItem(SK);}catch(e){}menuReset();showAuth();};
-var VER='2.8';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
+var VER='2.9';$('verAuth').textContent='Versión '+VER;$('verMenu').textContent='Versión '+VER;
 function bkCheck(){var b=$('bkBanner');if(!USER){b.hidden=true;return;}var now=Date.now(),n=Math.max(0,S.entries.length-(S.bkN||0)),msg=null;
  if(S.bkSnooze&&new Date(S.bkSnooze).getTime()>now){b.hidden=true;return;}
  if(!S.lastBackup){if(S.entries.length>=5)msg='Ya tienes '+S.entries.length+' movimientos y aún no has guardado un respaldo. ¿Quieres guardar uno ahora?';}
@@ -371,6 +390,18 @@ $('bkFile').onchange=function(){var f=this.files&&this.files[0];if(!f)return;var
  try{localStorage.setItem('misGanancias.u.'+key,JSON.stringify(D));}catch(e){m.textContent='No se pudo guardar en este dispositivo.';return;}
  remembered=p.usuario.name;try{localStorage.setItem(LK,remembered);}catch(e){}setMode('login');$('ap').value='';m.style.color='var(--in)';m.textContent='Respaldo cargado. Escribe tu contraseña para entrar.';$('ap').focus();};
  rd.readAsText(f);};
+var edIx=-1;
+function plain(v){return String(v).replace('.',',');}
+function edOpen(ix){var E=S.entries[ix];if(!E)return;edIx=ix;var isBs=+E.bs>0;document.querySelector('input[name=edtype][value='+E.type+']').checked=true;$('edCur').value=isBs?'bs':'usd';$('edAmt').value=plain(isBs?+E.bs:E.usd);$('edTasa').value=E.tasa>0?plain(E.tasa):'';$('edDate').value=E.date;$('edNote').value=E.note||'';$('edCat').value=(E.cat==='g'||E.cat==='a')?E.cat:'n';$('edCatRow').hidden=E.type!=='out';$('edMsg').textContent='';var s=$('edit'),sc=$('edScrim');s.hidden=false;sc.hidden=false;void s.offsetWidth;s.classList.add('open');sc.classList.add('open');document.body.style.overflow='hidden';}
+function edClose(){var s=$('edit'),sc=$('edScrim');s.classList.remove('open');sc.classList.remove('open');document.body.style.overflow='';setTimeout(function(){if(!s.classList.contains('open')){s.hidden=true;sc.hidden=true;}},230);}
+document.querySelectorAll('input[name=edtype]').forEach(function(r){r.onchange=function(){$('edCatRow').hidden=r.value!=='out';};});
+$('edScrim').onclick=edClose;$('edCancel').onclick=edClose;
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('edit').hidden)edClose();});
+$('edForm').onsubmit=function(ev){ev.preventDefault();var E=S.entries[edIx];if(!E){edClose();return;}var m=$('edMsg'),a=parseNum($('edAmt').value),t=parseNum($('edTasa').value),cur=$('edCur').value,dt=$('edDate').value,type=document.querySelector('input[name=edtype]:checked').value;m.textContent='';
+ if(!(a>0)){m.textContent='Escribe un monto mayor a cero.';return;}
+ if(!dt){m.textContent='Elige una fecha.';return;}
+ if(cur==='bs'&&!(t>0)){m.textContent='Para un monto en Bs, indica la tasa.';return;}
+ var usd=cur==='bs'?a/t:a;E.type=type;E.usd=Math.round(usd*100)/100;E.bs=cur==='bs'?a:0;E.tasa=t>0?t:0;E.date=dt;E.note=$('edNote').value.trim();E.cat=type==='out'?$('edCat').value:'';save();edClose();render();bkCheck();};
 var su=null;try{su=localStorage.getItem(SK);}catch(e){}
 var U0=users();
 if(su&&U0[su.toLowerCase()])enter(U0[su.toLowerCase()].name);else showAuth();
